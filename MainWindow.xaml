@@ -1,0 +1,64 @@
+﻿<Window x:Class="Edu_board_game.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Edu_bord_game"
+        mc:Ignorable="d"
+        Title="🎈 영유아~초등학생을 위한 보드게임 천국 🎈" Height="500" Width="800"
+        WindowStartupLocation="CenterScreen" Background="#F5F7FA" Name="GameWindow">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="lblGameTitle" Text="🎮 게임을 골라봐요!" FontSize="22" FontWeight="Bold"
+                   FontFamily="Malgun Gothic" Grid.Row="0" Margin="0,0,0,15"/>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,15">
+            <ComboBox x:Name="cbGameSelector" Width="180" Height="35" FontSize="16" SelectionChanged="cbGameSelector_SelectionChanged"
+                      VerticalContentAlignment="Center" FontFamily="Malgun Gothic">
+                <ComboBoxItem Content="하노이의 탑"/>
+                <ComboBoxItem Content="치킨차차"/>
+                <ComboBoxItem Content="우봉고"/>
+            </ComboBox>
+
+            <Button x:Name="btnStart" Content="🚀 시작해요!" Width="90" Height="35" Margin="15,0,0,0"
+                    FontSize="14" FontWeight="Bold" Background="LightGreen" Click="btnStart_Click"/>
+
+            <Button x:Name="btnAction" Content="🎲 굴려주세요!" Width="120" Height="35" Margin="10,0,0,0"
+                    FontSize="14" FontWeight="Bold" Background="LightSkyBlue" IsEnabled="False" Click="btnAction_Click"/>
+
+            <Button x:Name="btnHint" Content="💡 힌트!" Width="90" Height="35" Margin="10,0,0,0"
+                    FontSize="14" FontWeight="Bold" Background="Khaki" IsEnabled="False" Click="btnHint_Click"/>
+
+            <Button x:Name="btnStop" Content="🛑 멈춰요!" Width="90" Height="35" Margin="10,0,0,0"
+                    FontSize="14" FontWeight="Bold" Background="LightPink" IsEnabled="False" Click="btnStop_Click"/>
+        </StackPanel>
+
+        <TextBlock x:Name="lblScore" Text="나의 점수: 점" FontSize="24" FontWeight="Bold" Foreground="OrangeRed"
+                   FontFamily="Malgun Gothic" Grid.Row="2" Margin="0,0,0,15"/>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4*"/>
+                <ColumnDefinition Width="6*"/>
+            </Grid.ColumnDefinitions>
+
+            <ListBox x:Name="lbLogs" Grid.Row="3" FontSize="15" FontFamily="Malgun Gothic"/>
+
+            <Border Grid.Column="1" Background="White" BorderBrush="AliceBlue" BorderThickness="2" CornerRadius="10">
+                <Grid x:Name="VisualScreen">
+                    <TextBlock x:Name="tbVisualPlaceholder" Text="여기에서 게임 화면이 나타납니다! 👀"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontSize="16" Foreground="Gray"/>
+                    <Canvas x:Name="HanoiCanvers" Visibility="Collapsed"/>
+                    <WrapPanel x:Name="ItemWarpPanel" Margin="15" Visibility="Collapsed"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
