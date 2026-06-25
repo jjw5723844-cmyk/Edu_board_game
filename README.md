@@ -1,1 +1,1 @@
-# Edu_bord_game
+# Edu_board_game
