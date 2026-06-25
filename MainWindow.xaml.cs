@@ -18,78 +18,242 @@ using System.Windows.Shapes;
 
 namespace Edu_board_game
 {
-    // 최상위 조건 <1> (델리게이트 선언)
-    public delegate void GameLogHandler(string message);
-    public delegate void ScoreChangedHandler(int score);
-    public delegate void GameStateHandler(bool isRunning);
-
     public partial class MainWindow : Window
     {
-        // 게임 제어 변수 설정
+        // 변수 및 필드 정의
         private IBoardGame currentGame;
         private int currentScore = 0;
+        private Random visualRand = new Random();
 
-        // 배경색 브러시 정의(성능 및 재사용성 향상 목적)
-        private readonly SolidColorBrush defaultBgBrush  = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F5F7FA"));
-        private readonly SolidColorBrush hintBgBrush = new SolidColorBrush(Colors.LightYellow);
-        private readonly SolidColorBrush successBgBrush = new SolidColorBrush(Colors.LightGreen);
-        private readonly SolidColorBrush failBgBrush = new SolidColorBrush(Colors.LightPink);
+        private Brush hintBgBrush = Brushes.LightYellow;
+        private Brush successBgBrush = Brushes.LightGreen;
+        private Brush failBgBrush = Brushes.MistyRose;
+        private Brush defaultBgBrush = Brushes.White;
 
         public MainWindow()
         {
             InitializeComponent();
         }
 
-        // 최상위 조건 <2> (게임 UI 시각화 제어 메서드)
+        // 실시간 화면 갱신 총괄 메서드
         private void RefreshVisualScreen(string message)
         {
-            if (currentGame == null) return;
-
-            // 플레이스홀더 텍스트 숨김
-            tbVisualPlaceholder.Visibility = Visibility.Collapsed;
-
-            // 하노이의 탑 시각화 (도형 쌓기)
             if (currentGame is HanoiTowerGame hanoi)
             {
-                HanoiCanvers.Visibility = Visibility.Visible;
-                ItemWarpPanel.Visibility = Visibility.Collapsed;
+                HanoiCanvas.Visibility = Visibility.Visible;
+                ItemWrapPanel.Visibility = Visibility.Collapsed;
+                tbVisualPlaceholder.Visibility = Visibility.Collapsed;
 
-                // 턴이 진행될때마다 캔버스를 지우고 원반을 다시 생성
-                if (message.Contains("[원반 이동]") || message.Contains("시작"))
-                {
-                    HanoiCanvers.Children.Clear();
-                    DrawHanoiTowers(hanoi.Moves);
-                }
+                DrawHanoiTowers(hanoi.Moves);
             }
-
-            // 치킨차차 시작화 (꼬리깃털 늘리기)
-            else if (currentGame is ChickenChaChaGame chacha)
+            // 우봉고 시각화 (4x4 퍼즐 격자 보드판과 채워지는 블록 구현)
+            else if (currentGame is UbongoGame ubongo)
             {
-                HanoiCanvers.Visibility = Visibility.Collapsed;
-                ItemWarpPanel.Visibility = Visibility.Visible;
+                HanoiCanvas.Visibility = Visibility.Collapsed;
+                ItemWrapPanel.Visibility = Visibility.Visible;
+                tbVisualPlaceholder.Visibility = Visibility.Collapsed;
 
-                if (message.Contains("시작")) 
+                if (message.Contains("시작") || ItemWrapPanel.Children.Count != 16)
                 {
-                    ItemWarpPanel.Children.Clear();
+                    ItemWrapPanel.Children.Clear();
+                    // 우봉고 퍼즐 보드판 (4x4 총 16칸 Grid 모사)
+                    for (int i = 0; i < 16; i++)
+                    {
+                        Border puzzleCell = new Border
+                        {
+                            Width = 60,
+                            Height = 60,
+                            Margin = new Thickness(4),
+                            Background = Brushes.LightGray,
+                            BorderBrush = Brushes.DarkGray,
+                            BorderThickness = new Thickness(1),
+                            CornerRadius = new CornerRadius(5)
+                        };
+
+                        ItemWrapPanel.Children.Add(puzzleCell);
+                    }
                 }
 
-                if (message.Contains("[성공]"))
+                // 퍼즐 완성 시 빈 퍼즐 그리드 칸들이 알록달록한 퍼즐 조각 색상으로 채워짐
+                if (message.Contains("[퍼즐을 완성했어요!]"))
                 {
-                    // 성공할 때마다 닭과 깃털을 추가한다.
-                    TextBlock chickenText = new TextBlock { Text = "🐔🪶", FontSize = 40, Margin = new Thickness(5) };
-                    ItemWarpPanel.Children.Add(chickenText);
+                    Brush[] puzzleColors = { Brushes.MediumOrchid, Brushes.DodgerBlue, Brushes.YellowGreen, Brushes.IndianRed, Brushes.Gold };
+                    string[] gemEmojis = { "💎", "🔮", "👑", "⭐" };
+
+                    // 턴마다 무작위 칸 3~4개를 색상 블록과 보석으로 채워 퍼즐 판 맞춤을 시각화
+                    for (int i = 0; i < ItemWrapPanel.Children.Count; i++)
+                    {
+                        if (ItemWrapPanel.Children[i] is Border cell && visualRand.Next(0, 3) == 1)
+                        {
+                            cell.Background = puzzleColors[visualRand.Next(puzzleColors.Length)];
+                            cell.BorderBrush = Brushes.White;
+                            cell.Child = new TextBlock
+                            {
+                                Text = gemEmojis[visualRand.Next(gemEmojis.Length)],
+                                HorizontalAlignment = HorizontalAlignment.Center,
+                                VerticalAlignment = VerticalAlignment.Center,
+                                FontSize = 18
+                            };
+                        }
+                    }
                 }
             }
+            // 치킨차차 시각화 (12개의 예쁜 원형 카드 레이아웃 구현)
+            else if (currentGame is ChickenChaChaGame chicken)
+            {
+                HanoiCanvas.Visibility = Visibility.Collapsed;
+                tbVisualPlaceholder.Visibility = Visibility.Collapsed;
+                ItemWrapPanel.Visibility = Visibility.Visible;
 
-            // 우봉고 시각화 (보석 상자 채우기)
+                // 12개의 동그란 "can" 카드판 생성
+                if (message.Contains("시작") || ItemWrapPanel.Children.Count != 12)
+                {
+                    ItemWrapPanel.Children.Clear();
+                    for (int i = 1; i <= 12; i++)
+                    {
+                        Border circleCard = new Border
+                        {
+                            Width = 75,
+                            Height = 75,
+                            Margin = new Thickness(10, 8, 10, 8),
+                            Background = new SolidColorBrush(Color.FromRgb(254, 243, 226)), // 연한 주황빛 톤
+                            BorderBrush = new SolidColorBrush(Color.FromRgb(249, 168, 37)),  // 따뜻한 오렌지 테두리
+                            BorderThickness = new Thickness(2),
+                            CornerRadius = new CornerRadius(37.5), // 원형 구현
+                            Child = new TextBlock
+                            {
+                                Text = $"can {i}",
+                                Foreground = new SolidColorBrush(Color.FromRgb(245, 124, 0)),
+                                FontWeight = FontWeights.Bold,
+                                HorizontalAlignment = HorizontalAlignment.Center,
+                                VerticalAlignment = VerticalAlignment.Center,
+                                FontSize = 13
+                            }
+                        };
+                        ItemWrapPanel.Children.Add(circleCard);
+                    }
+                }
+
+                // 성공 시 카드 한 장이 뒤집히거나 깃털을 획득하는 시각 효과 추가 연출
+                if (message.Contains("[성공이에요!]"))
+                {
+                    int luckyIdx = visualRand.Next(0, 12);
+                    if (ItemWrapPanel.Children[luckyIdx] is Border card)
+                    {
+                        card.Background = Brushes.LightGreen;
+                        card.BorderBrush = Brushes.Green;
+                        if (card.Child is TextBlock tb)
+                        {
+                            tb.Text = "🐓 꼬리!";
+                            tb.Foreground = Brushes.DarkGreen;
+                        }
+                    }
+                }
+            }
         }
-        
+
+        // 하노이의 탑 시각화
+        private void DrawHanoiTowers(int currentMoves)
+        {
+            HanoiCanvas.Children.Clear();
+            double canvasWidth = VisualScreen.ActualWidth;
+            if (canvasWidth == 0) canvasWidth = 500;
+
+            double groundY = 240; // 바닥 기둥 바의 Y축 위치
+
+            // 1. 기둥 베이스 바닥 그리기
+            Rectangle ground = new Rectangle { Width = canvasWidth - 40, Height = 12, Fill = Brushes.SaddleBrown };
+            Canvas.SetLeft(ground, 20);
+            Canvas.SetTop(ground, groundY);
+            HanoiCanvas.Children.Add(ground);
+
+            // 2. 기둥 3개 위치 및 하단 레이블
+            double[] pegX = { canvasWidth * 0.25, canvasWidth * 0.5, canvasWidth * 0.75 };
+            string[] pegNames = { "기둥 A", "기둥 B", "기둥 C" };
+
+            for (int i = 0; i < 3; i++)
+            {
+                Rectangle pillar = new Rectangle { Width = 10, Height = 140, Fill = Brushes.DarkGray, RadiusX = 2, RadiusY = 2 };
+                Canvas.SetLeft(pillar, pegX[i] - 5);
+                Canvas.SetTop(pillar, groundY - 140);
+                HanoiCanvas.Children.Add(pillar);
+
+                TextBlock pegLabel = new TextBlock
+                {
+                    Text = pegNames[i],
+                    Foreground = Brushes.DimGray,
+                    FontSize = 13,
+                    FontWeight = FontWeights.Bold,
+                    Width = 60,
+                    TextAlignment = TextAlignment.Center
+                };
+                Canvas.SetLeft(pegLabel, pegX[i] - 30);
+                Canvas.SetTop(pegLabel, groundY + 18);
+                HanoiCanvas.Children.Add(pegLabel);
+            }
+
+            // 3. 하노이의 탑 규칙 적용(3개 원반의 이동 경로를 완벽하게 추적하는 상태 배열 구현)
+
+            // 하노이의 탑 3층이 구성될 경우 총 7번의 이동한다. (% 8을 통한 무한 반복 가능)
+            int step = currentMoves % 8;
+
+
+            /* 원반의 인덱스 정의
+             1. index 0: 제일 큰 원반, index 1: 중간 원반, index 2: 제일 작은 원반
+             2. 각 원반이 현재 어떤 기둥(0:A, 1:B, 2:C)에 가 있어야 하는지 정의
+            */
+            int[] diskPegs = new int[3];
+
+            // 원반이 쌓이는 규칙 정의
+            switch (step)
+            {
+                case 0: diskPegs = new int[] { 0, 0, 0 }; break; // 첫 단계: 모두 A에 쌓임 (3층)
+                case 1: diskPegs = new int[] { 0, 0, 2 }; break; // 작은 원반 -> C
+                case 2: diskPegs = new int[] { 0, 1, 2 }; break; // 중간 원반 -> B
+                case 3: diskPegs = new int[] { 0, 1, 1 }; break; // 작은 원반 -> B (B에 2층 쌓임)
+                case 4: diskPegs = new int[] { 2, 1, 1 }; break; // 큰 원반 -> C
+                case 5: diskPegs = new int[] { 2, 1, 0 }; break; // 작은 원반 -> A
+                case 6: diskPegs = new int[] { 2, 2, 0 }; break; // 중간 원반 -> C (C에 2층 쌓임)
+                case 7: diskPegs = new int[] { 2, 2, 2 }; break; // 최종 단계: 모두 C에 정렬 (3층)
+            }
+
+            // 원반 설정 (큰 것부터 차례대로 밑바닥에 깔리도록 순서 고정)
+            int diskCount = 3;
+            double[] diskWidths = { 130, 95, 60 }; // 크기 밸런스 조정
+            Brush[] diskColors = { Brushes.Tomato, Brushes.Gold, Brushes.DodgerBlue };
+
+            // 각 기둥별로 현재 몇 층까지 원반이 쌓였는지 확인하는 카운터
+            int[] pegDiskCounts = { 0, 0, 0 };
+
+            for (int i = 0; i < diskCount; i++)
+            {
+                double diskWidth = diskWidths[i];
+                double diskHeight = 22;
+
+                Rectangle disk = new Rectangle { Width = diskWidth, Height = diskHeight, Fill = diskColors[i], RadiusX = 5, RadiusY = 5 };
+
+                // 하노이 탑 작동 원리 규칙에서 가져온 목적지 기둥 구하기
+                int targetPeg = diskPegs[i];
+
+                double leftPos = pegX[targetPeg] - (diskWidth / 2);
+
+                // 해당 기둥에 이미 쌓인 개수만큼 위로 쌓아 원반별 중첩되는 현상을 방지
+                double topPos = groundY - diskHeight - (pegDiskCounts[targetPeg] * diskHeight);
+
+                // 해당 기둥에 쌓이는 카운트 증가
+                pegDiskCounts[targetPeg]++;
+
+                Canvas.SetLeft(disk, leftPos);
+                Canvas.SetTop(disk, topPos);
+                HanoiCanvas.Children.Add(disk);
+            }
+        }
+
         /// <1> 델리게이트 콜백 메서드 (WPF UI 스레드의 안정성 확보)
 
         // 1. 게임 로그 송수신
         private void UpdateGameLog(string message)
         {
-            // WPF 크로스 스레드 처리
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.Invoke(() => UpdateGameLog(message));
@@ -99,27 +263,30 @@ namespace Edu_board_game
             string safeMessage = message ?? "";
 
             lbLogs.Items.Add(safeMessage);
-            lbLogs.ScrollIntoView(lbLogs.Items[lbLogs.Items.Count - 1]); // 스크롤 최하단 자동 이동
+            lbLogs.ScrollIntoView(lbLogs.Items[lbLogs.Items.Count - 1]);
+
+            // 실시간 화면 갱신
+            RefreshVisualScreen(safeMessage);
 
             // 학습자 편의 기능 지원: 키워드별 화면 색상 변환 및 효과음 적용
             if (safeMessage.Contains("[💡힌트]"))
             {
                 SystemSounds.Asterisk?.Play();
-                GameWindow.Background = hintBgBrush;
+                this.Background = hintBgBrush;
             }
             else if (safeMessage.Contains("[성공이에요!]") || safeMessage.Contains("[퍼즐을 완성했어요!]"))
             {
                 SystemSounds.Asterisk?.Play();
-                GameWindow.Background = successBgBrush;
+                this.Background = successBgBrush;
             }
             else if (safeMessage.Contains("[실수했어요..]")) // 실패라는 완곡적인 표현보다는 학습자들의 연령대에 맞춘 문구를 출력한다.
             {
                 SystemSounds.Asterisk?.Play();
-                GameWindow.Background = failBgBrush;
+                this.Background = failBgBrush;
             }
             else
             {
-                GameWindow.Background = defaultBgBrush;
+                this.Background = defaultBgBrush;
             }
         }
 
@@ -137,7 +304,7 @@ namespace Edu_board_game
             int starCount = Math.Min(10, score / 30); // 별 모양 이모티콘으로 점수 표현
             string stars = starCount == 0 ? "시작해봐요!" : new string('⭐', starCount);
 
-            lblScore.Text = $"내 칭찬 점수: {stars} ({currentScore}점)";
+            lblScore.Text = $"내 칭찬 점수는: {stars} ({currentScore}점)";
         }
 
         // 3. 게임 상태 송수신
@@ -149,12 +316,20 @@ namespace Edu_board_game
                 return;
             }
 
-            cbGameSelector.IsEnabled = !isRunning; // 선택창과 시작 버튼은 게임 중 비활성화
+            cbGameSelector.IsEnabled = !isRunning;
             btnStart.IsEnabled = !isRunning;
 
-            btnAction.IsEnabled = isRunning; // 플레이, 힌트, 정지 버튼은 게임 중 활성화
+            btnAction.IsEnabled = isRunning;
             btnHint.IsEnabled = isRunning;
             btnStop.IsEnabled = isRunning;
+
+            if (!isRunning)
+            {
+                tbVisualPlaceholder.Visibility = Visibility.Visible;
+                tbVisualPlaceholder.Text = "게임이 종료되었습니다! 다른 게임을 골라보세요. 🔄";
+                HanoiCanvas.Visibility = Visibility.Collapsed;
+                ItemWrapPanel.Visibility = Visibility.Collapsed;
+            }
         }
 
         /// <2> 기본 UI 컨트롤 이벤트 핸들러 설정
@@ -183,7 +358,7 @@ namespace Edu_board_game
                 UpdateGameLog($"{selectedGame}이(가) 선택되었습니다. 시작 버튼을 누르세요.");
             }
         }
-        
+
         // 2-2. 버튼 컨트롤러 설정(버튼을 누를시 작동하는 행동들의 기본적인 정의)
         private void btnStart_Click(object sender, RoutedEventArgs e)
         {
@@ -193,7 +368,6 @@ namespace Edu_board_game
             currentGame.OnLogReceived += UpdateGameLog;
             currentGame.OnScoreChanged += UpdateScore;
             currentGame.OnStateChanged += SetGameState;
-
             currentGame.Start();
         }
 
@@ -212,13 +386,17 @@ namespace Edu_board_game
             if (currentGame != null)
             {
                 currentGame.Stop();
-
                 currentGame.OnLogReceived -= UpdateGameLog;
                 currentGame.OnScoreChanged -= UpdateScore;
                 currentGame.OnStateChanged -= SetGameState;
             }
         }
     }
+
+    // 통신을 연결하기 위한 델리게이트 정의
+    public delegate void GameLogHandler(string message);
+    public delegate void ScoreChangedHandler(int score);
+    public delegate void GameStateHandler(bool isRunning);
 
     /// <3> 보드게임 공통 인터페이스 설정
     public interface IBoardGame
@@ -247,6 +425,9 @@ namespace Edu_board_game
 
         private int moves = 0;
 
+        // 외부(UI)에서 get 속성을 인삭하여 안전하게 검토
+        public int Moves => moves;
+
         public void Start()
         {
             moves = 0;
@@ -263,7 +444,7 @@ namespace Edu_board_game
 
         public void ProvideHint()
         {
-            OnLogReceived?.Invoke("[💡힌트] 기억하세요! 큰 원반은 절대로 작은 원반 위로 올라갈 수 없어요! 가장 위에 있는 작은 원반부터 차근차근 옮겨봐요.");
+            OnLogReceived?.Invoke("[💡힌트] 기억하세요! 큰 원반은 절대로 작은 원반 위로 올라갈 수 없어요! \n가장 위에 있는 작은 원반부터 차근차근 옮겨봐요.");
         }
 
         public void Stop()
@@ -282,6 +463,7 @@ namespace Edu_board_game
         public event GameStateHandler OnStateChanged;
 
         private int feathers = 0;
+        public int Feathers => feathers;
         private Random rand = new Random();
         private string[] tileImages = { "귀여운 오리", "싱싱한 채소", "예쁜 꽃", "매끄러운 조약돌" };
 
@@ -298,19 +480,19 @@ namespace Edu_board_game
             if (isMatch)
             {
                 feathers++;
-                OnLogReceived?.Invoke($"[성공] 그림이 일치합니다! 꼬리깃털을 획득했습니다. (현재 {feathers}개)");
+                OnLogReceived?.Invoke($"[성공이에요!] 그림이 일치합니다! 꼬리깃털을 획득했습니다. (현재 {feathers}개)");
                 OnScoreChanged?.Invoke(feathers * 30);
             }
             else
             {
-                OnLogReceived?.Invoke("[실패] 이런 그림이 달라요. 다음 마당 타일을 잘 기억해두세요!");
+                OnLogReceived?.Invoke("[실수했어요..] 이런 그림이 달라요. 다음 마당 타일을 잘 기억해두세요!");
             }
         }
 
         public void ProvideHint()
         {
             string hintTile = tileImages[rand.Next(tileImages.Length)];
-            OnLogReceived?.Invoke($"[💡힌트] 쉿! 이건 비밀인데 앞쪽 어딘가에 {{hintTile}} 그림 타일이 숨겨져 있는 것 같아요!");
+            OnLogReceived?.Invoke($"[💡힌트] 쉿! 이건 비밀인데 앞쪽 어딘가에 {hintTile} 그림 타일이 숨겨져 있는 것 같아요!");
         }
 
         public void Stop()
@@ -329,7 +511,6 @@ namespace Edu_board_game
         public event GameStateHandler OnStateChanged;
 
         private int solvedPuzzles = 0;
-        private Random rand = new Random();
 
         public void Start()
         {
@@ -341,14 +522,13 @@ namespace Edu_board_game
         public void PlayTurn()
         {
             solvedPuzzles++;
-            OnLogReceived?.Invoke($"[퍼즐 완성을 완성했어요!] \"우봉고!\" 외치며 퍼즐판을 모두 채워 반짝이는 보석을 얻었습니다.");
+            OnLogReceived?.Invoke($"[퍼즐을 완성했어요!] \"우봉고!\" 외치며 퍼즐판을 모두 채워 반짝이는 보석을 얻었습니다.");
             OnScoreChanged?.Invoke(solvedPuzzles * 50);
         }
 
         public void ProvideHint()
         {
-            OnLogReceived?.Invoke("[💡힌트] 퍼즐 조각이 안 맞을 때는 마우스로 조각을 돌리거나 뒤집어 보세요! 그리고 가장 커다란 조각부터 먼저 자리를 잡아주면 훨씬 쉬워요!");
-
+            OnLogReceived?.Invoke("[💡힌트] 퍼즐 조각이 안 맞을 때는 마우스로 조각을 돌리거나 뒤집어 보세요! \n그리고 가장 커다란 조각부터 먼저 자리를 잡아주면 훨씬 쉬워요!");
         }
 
         public void Stop()
